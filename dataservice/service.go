@@ -6,8 +6,8 @@ import (
 )
 
 func CreateBook(db *sql.DB, book model.Book) error {
-	query := `INSERT INTO library(title, author, year) VALUES (?, ?, ?)`
-	_, err := db.Exec(query, book.Title, book.Author, book.Year)
+	query := `INSERT INTO BOOKS(id, title, author, year) VALUES (?, ?, ?, ?)`
+	_, err := db.Exec(query, book.Id, book.Title, book.Author, book.Year)
 	if err != nil {
 		return err
 	}

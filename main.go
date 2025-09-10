@@ -3,10 +3,10 @@ package main
 import (
 	"New/api"
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/IBM/sarama"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -15,18 +15,39 @@ func main() {
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatal("Error opening database: ", err)
-
+		log.Fatal(err)
 	}
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Connection established successfully!")
 
-	api.RegisterRoutes(db)
+	producer, err := initKafkaProducer()
+	if err != nil {
+		log.Fatalf("Error creating Kafka producer: %v", err)
+	}
+	defer producer.Close()
 
-	log.Println("Server started on :3030")
-	log.Fatal(http.ListenAndServe(":3030", nil))
+	api.RegisterRoutes(db, producer)
+
+	//Start the HTTP server
+	log.Println("Server starting on port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func initKafkaProducer() (sarama.SyncProducer, error) {
+	brokerList := []string{"localhost:9092"}
+
+	config := sarama.NewConfig()
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Retry.Max = 5
+	config.Producer.Return.Successes = true
+
+	producer, err := sarama.NewSyncProducer(brokerList, config)
+	if err != nil {
+		return nil, err
+	}
+
+	return producer, nil
 }
